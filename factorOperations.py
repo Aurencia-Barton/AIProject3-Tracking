@@ -189,6 +189,20 @@ def eliminateWithCallTracking(callTrackingList=None):
                     "unconditionedVariables: " + str(factor.unconditionedVariables()))
 
         "*** YOUR CODE HERE ***"
+        newUnconditionedVars = factor.unconditionedVariables() #new unconditioned variables - the elimination variable
+        newConditionedVars = factor.conditionedVariables()
+        varDomains = factor.variableDomainsDict()
+        
+        
+        newFactor = Factor(newUnconditionedVars, newConditionedVars, varDomains) #creates a new factor but doesn't eliminate the variable
+    
+        for assignment in newFactor.getAllPossibleAssignmentDicts(): #prob. sum is computed
+            sumProb = sum(factor.getProbability(dict(assignment, **{eliminationVariable: val})) #sums the prob. over all possible values for the elimination variable
+                          for val in varDomains[eliminationVariable])
+            
+            newFactor.setProbability(assignment, sumProb) #calculated sum in new factor
+        return newFactor
+
         raiseNotDefined()
         "*** END YOUR CODE HERE ***"
 
