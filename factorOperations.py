@@ -133,10 +133,6 @@ def joinFactors(factors: List[Factor]):
         newFactor.setProbability(assignment, probability) #newly calculated probability is assigned to the new factor
         
     return newFactor
-            
-    
-    
-    
     
     raiseNotDefined()
     "*** END YOUR CODE HERE ***"
