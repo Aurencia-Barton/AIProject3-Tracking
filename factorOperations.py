@@ -185,7 +185,7 @@ def eliminateWithCallTracking(callTrackingList=None):
                     "unconditionedVariables: " + str(factor.unconditionedVariables()))
 
         "*** YOUR CODE HERE ***"
-        newUnconditionedVars = factor.unconditionedVariables() #new unconditioned variables - the elimination variable
+        newUnconditionedVars = factor.unconditionedVariables() - {eliminationVariable} #new unconditioned variables - the elimination variable
         newConditionedVars = factor.conditionedVariables()
         varDomains = factor.variableDomainsDict()
         
