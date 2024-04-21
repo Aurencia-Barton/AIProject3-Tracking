@@ -186,20 +186,48 @@ def inferenceByVariableEliminationWithCallTracking(callTrackingList=None):
 
         # this is for autograding -- don't modify
         joinFactorsByVariable = joinFactorsByVariableWithCallTracking(callTrackingList)
-        eliminate             = eliminateWithCallTracking(callTrackingList)
+        eliminate = eliminateWithCallTracking(callTrackingList)
         if eliminationOrder is None: # set an arbitrary elimination order if None given
-            eliminationVariables = bayesNet.variablesSet() - set(queryVariables) -\
-                                   set(evidenceDict.keys())
+            eliminationVariables = bayesNet.variablesSet() - set(queryVariables) - set(evidenceDict.keys())
             eliminationOrder = sorted(list(eliminationVariables))
+            
 
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
-        "*** END YOUR CODE HERE ***"
+        
+        # Start with factors that already have evidence applied
+    factors = bayesNet.getAllCPTsWithEvidence(evidenceDict)
+
+    # Interleave joining and elimination
+    for variable in eliminationOrder:
+        # Only consider variables that are neither query variables nor evidence
+        if variable not in queryVariables and variable not in evidenceDict:
+            # Join factors containing the variable
+            factorsWithVariable = [f for f in factors if variable in f.variablesSet()]
+            if factorsWithVariable:
+                _, joinedFactor = joinFactorsByVariable(factorsWithVariable, variable)
+                
+                # Check if the joined factor has only one unconditioned variable
+                # and it's not one of the query variables, then discard
+                if len(joinedFactor.unconditionedVariables()) == 1 and list(joinedFactor.unconditionedVariables())[0] == variable:
+                    factors = [f for f in factors if variable not in f.variablesSet()]
+                else:
+                    # Eliminate the variable from the joined factor
+                    eliminatedFactor = eliminate(joinedFactor, variable)
+                    # Update factors list: replace factorsWithVariable with eliminatedFactor
+                    factors = [f for f in factors if f not in factorsWithVariable] + [eliminatedFactor]
+
+    # Join remaining factors that contain only query variables and evidence
+    finalFactor = joinFactors(factors)
+    
+    normalizedFactor = normalize(finalFactor)
+    
+    return normalizedFactor
+    "*** END YOUR CODE HERE ***"
 
 
     return inferenceByVariableElimination
 
-inferenceByVariableElimination = inferenceByVariableEliminationWithCallTracking()
+inferenceByVariableElimination = inferenceByVariableEliminationWithCallTracking
 
 def sampleFromFactorRandomSource(randomSource=None):
     if randomSource is None:
@@ -334,7 +362,14 @@ class DiscreteDistribution(dict):
         {}
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        
+        totalValue = self.total()
+        if totalValue == 0:
+            return
+        for key in self.keys():
+            self[key] = self[key] / totalValue
+            
+        #raiseNotDefined()
         "*** END YOUR CODE HERE ***"
 
     def sample(self):
@@ -359,6 +394,18 @@ class DiscreteDistribution(dict):
         0.0
         """
         "*** YOUR CODE HERE ***"
+        total = self.total()
+        if total == 0:
+            raise ValueError("Empty distribution... ") # checking for empty dsitrbution
+        
+        r = random.random() * total #random float and calculates the sum of the weights
+        cumulative = 0.0
+        
+        for key, weight in self.items():
+            cumulative += weight
+            if cumulative > r:   # r is present
+                return key
+        
         raiseNotDefined()
         "*** END YOUR CODE HERE ***"
 
@@ -434,7 +481,24 @@ class InferenceModule:
         Return the probability P(noisyDistance | pacmanPosition, ghostPosition).
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        if ghostPosition == jailPosition:  #no observation if the ghost is in jail
+            
+            if noisyDistance is None:
+                return 1.0
+            else:
+                return 0.0
+        
+        if noisyDistance is None:
+            return 0.0
+        
+        trueDistance = manhattanDistance(pacmanPosition, ghostPosition) #calculates distance between ghost and pacman
+        
+        
+        return busters.getObservationProbability(noisyDistance, trueDistance) #returns the calculated result of this distance
+    
+        #raiseNotDefined()
+        
+        
         "*** END YOUR CODE HERE ***"
 
     def setGhostPosition(self, gameState, ghostPosition, index):
@@ -548,7 +612,18 @@ class ExactInference(InferenceModule):
         position is known.
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        pacmanPosition = gameState.getPacmanPosition()
+        jailPosition = self.getJailPosition()
+        
+        allPossible = DiscreteDistribution()
+        for p in self.allPositions:
+            probGivenObserv = self.getObservationProb(observation, pacmanPosition, p, jailPosition)
+            allPossible[p] = self.beliefs[p] * probGivenObserv
+        
+        allPossible.normalize()
+        self.beliefs = allPossible
+        
+        #raiseNotDefined()
         "*** END YOUR CODE HERE ***"
         self.beliefs.normalize()
     
@@ -566,7 +641,22 @@ class ExactInference(InferenceModule):
         current position is known.
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        updatedBeliefs = DiscreteDistribution() # dictionary used temp for updated beliefs
+        
+        
+        for oldPos in self.allPositions: #all possible old positions of the ghost will be looped
+            newPosDist = self.getPositionDistribution(gameState, oldPos) # retrieves the distribution for the new positions for the ghost
+            
+            
+            for newPos, prob in newPosDist.items(): # the beliefs for each new position are updated
+                updatedBeliefs[newPos] += self.beliefs[oldPos] * prob
+                
+        updatedBeliefs.normalize() #updated beliefd are normalized
+        
+        
+        self.beliefs = updatedBeliefs # new beliefs of the belief distribution are updated
+
+        #raiseNotDefined()
         "*** END YOUR CODE HERE ***"
 
     def getBeliefDistribution(self):
